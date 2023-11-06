@@ -11,10 +11,17 @@ https://arxiv.org/abs/2305.04140
 
 "gss_newFunctions2.R" is a revision on the original gss package to fit smoothing splines.
 
+
 All other files are Rcpp files. 
+
 "Rcpp_Estep.r" calculates the Estep of the algorithm.
+
 "Rcpp_cholForwardInSSANOVA.r" calculates the block diagonal matrix cholesky decomposition and is called in "gss_newFunctions2.R".
+
 "Rcpp_generateData.r" is used for generating simulation data.
+
 "Rcpp_varComp4V2.R" and "Rcpp_varComp4V2_CAR1.R" are Cpp version of profiled likelihood function to be optimized.
+
 "Rcpp_varComp4_gradientV2.R" and "Rcpp_varComp4_gradientV2_CAR1.R" are Cpp version of the gradient of profiled likelihood function to be optimized.
+
 "Rcpp_varCompEv3.R" and "Rcpp_varCompEv3_CAR1.R" are used to get the estimate of sigma^2 since we profiled it out.

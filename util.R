@@ -28,11 +28,11 @@ hyper <- function(){
   no <- 1000#3293            # total number of subjects
   Tio <- -30:0         # observation window
   
-  max_itero <- 100                 # max iteration for EM algorithm
+  max_itero <- 1                 # max iteration for EM algorithm
   max_rel_changeo <- 1e-5           # convergence criteria for EM iteration
   
   
-  max_iter_innero <- 5              # max iteration for inner algorithm
+  max_iter_innero <- 1              # max iteration for inner algorithm
   max_rel_change_innero <- 1e-5     # convergence criteria for inner iteration
   
   
@@ -949,7 +949,9 @@ ALGORITHM <- function(hypers,DATA){
               vp4hat=vp4hat,vp5hat=vp5hat,vp6hat=vp6hat,vp7hat=vp7hat,
               vp8hat=vp8hat,vp9hat=vp9hat,vp10hat=vp10hat,
               ###
-              betashat=betashat,p1=p1,p2=p2,ids=ids))
+              betashat=betashat,p1=p1,p2=p2,ids=ids,
+              ###
+              GL = GL, ZmatL = ZmatL))
   
 }
 
@@ -1110,11 +1112,6 @@ RESULTS <- function(hypers,DATA,EMresults,tm.all){
     Fcoverage2 <- mean((CI2[4,]>CI2[1,]) & (CI2[4,]<CI2[3,]))
     
     
-    # used for CI of var. comp.
-    ui1 = w_2
-    ui2 = 1-ui1
-    
-    
     # flip fitgss1 and fitgss2, will be used later
     fitgsstemp = fitgss1
     fitgss1 = fitgss2
@@ -1179,12 +1176,127 @@ RESULTS <- function(hypers,DATA,EMresults,tm.all){
     Fcoverage1 <- mean((CI1[4,]>CI1[1,]) & (CI1[4,]<CI1[3,]))
     Fcoverage2 <- mean((CI2[4,]>CI2[1,]) & (CI2[4,]<CI2[3,]))
     
-    
-    # used for CI of var. comp.
-    ui1 = w_1
-    ui2 = 1-ui1
+
     
   }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  ### read in results at convergence
+  Zi = EMresults$ZmatL
+  
+  ### G_ik matrices
+  Gi1 = EMresults$GL
+  for(i in 1:length(Gi1)){
+    Gi1[[i]][1,1] = estSigma2_a1
+    Gi1[[i]][1,2] = estSigma2_as1
+    Gi1[[i]][2,1] = estSigma2_as1
+    Gi1[[i]][2,2] = estSigma2_s1
+    Gi1[[i]][3:nrow(Gi1[[i]]),3:ncol(Gi1[[i]])] =
+      Gi1[[i]][3:nrow(Gi1[[i]]),3:ncol(Gi1[[i]])] * estSigma2_np1
+  }
+  Gi2 = EMresults$GL
+  for(i in 1:length(Gi2)){
+    Gi2[[i]][1,1] = estSigma2_a2
+    Gi2[[i]][1,2] = estSigma2_as2
+    Gi2[[i]][2,1] = estSigma2_as2
+    Gi2[[i]][2,2] = estSigma2_s2
+    Gi2[[i]][3:nrow(Gi2[[i]]),3:ncol(Gi2[[i]])] =
+      Gi2[[i]][3:nrow(Gi2[[i]]),3:ncol(Gi2[[i]])] * estSigma2_np2
+  }
+  
+  ### V_ik matrices
+  Vi1 = Vi2 = vector("list",length(Gi1))
+  for(i in 1:length(Vi1)){
+    Vi1[[i]] = Zi[[i]] %*% Gi1[[i]] %*% t(Zi[[i]]) + estSigma2 * diag(nrow(Zi[[i]]))
+    Vi2[[i]] = Zi[[i]] %*% Gi2[[i]] %*% t(Zi[[i]]) + estSigma2 * diag(nrow(Zi[[i]]))
+  }
+  
+  ### y_i - hat(y_ik) matrices
+  Yi = vector("list",length(Gi1))
+  yalld = EMresults$yalld
+  ti = -30:0
+  tiscaled = (ti-min(ti)) / (max(ti)-min(ti))
+  P_mu1 = data.frame(ti = tiscaled, y1hat = p_mu1)
+  P_mu2 = data.frame(ti = tiscaled, y2hat = p_mu2)
+  
+  u_id = unique(yalld$id)
+  
+  for(i in 1:length(u_id)){
+    tempdata = yalld[yalld$id == u_id[i],]
+    tempdata2 = merge(tempdata,P_mu1,by="ti",all.x=T)
+    tempdata2 = merge(tempdata2,P_mu2,by="ti",all.x=T)
+    tempdata2$y_y1hat = tempdata2$y - tempdata2$y1hat
+    tempdata2$y_y2hat = tempdata2$y - tempdata2$y2hat
+    Yi[[i]] = tempdata2
+  }
+  
+  
+  ### Z_ik hat(b_ik)
+  Zb1_hat = Zb2_hat = vector("list",length(Gi1))
+  r_int1 = r_slp1 = r_int2 = r_slp2 = c()
+  for(i in 1:length(Zb1_hat)){
+    Zb1_hat[[i]] =
+      Gi1[[i]] %*% t(Zi[[i]]) %*% solve(Vi1[[i]]) %*% Yi[[i]]$y_y1hat
+    Zb2_hat[[i]] =
+      Gi2[[i]] %*% t(Zi[[i]]) %*% solve(Vi2[[i]]) %*% Yi[[i]]$y_y2hat
+    r_int1 = c(r_int1,Zb1_hat[[i]][1,1])
+    r_slp1 = c(r_slp1,Zb1_hat[[i]][2,1])
+    r_int2 = c(r_int2,Zb2_hat[[i]][1,1])
+    r_slp2 = c(r_slp2,Zb2_hat[[i]][2,1])
+  }
+  
+  randomEffects = cbind(r_int1,r_slp1,r_int2,r_slp2)
+  colnames(randomEffects) = c("r_int1","r_slp1","r_int2","r_slp2")
+  
+  
+  
+  
+  
+  
+  
+  ### Z_ik hat(b_ik)
+  Zb1_hat = Zb2_hat = vector("list",length(Gi1))
+  for(i in 1:length(Zb1_hat)){
+    Zb1_hat[[i]] =
+      Zi[[i]] %*% Gi1[[i]] %*% t(Zi[[i]]) %*% solve(Vi1[[i]]) %*% Yi[[i]]$y_y1hat
+    Zb2_hat[[i]] =
+      Zi[[i]] %*% Gi2[[i]] %*% t(Zi[[i]]) %*% solve(Vi2[[i]]) %*% Yi[[i]]$y_y2hat
+  }
+  
+  
+  
+  w_1 = w_1_r[,ncol(w_1_r)]
+  
+  Group1 = which(w_1>=0.5)
+  Group2 = which(w_1<0.5)
+  Y1 = Yi[Group1]
+  Y2 = Yi[Group2]
+  Zb1_hat = Zb1_hat[Group1]
+  Zb2_hat = Zb2_hat[Group2]
+  
+  for(i in 1:length(Y1)){
+    Y1[[i]] = Y1[[i]]$y_y1hat - as.numeric(Zb1_hat[[i]])
+  }
+  for(i in 1:length(Y2)){
+    Y2[[i]] = Y2[[i]]$y_y2hat - as.numeric(Zb2_hat[[i]])
+  }
+  
+  resid_all = c(unlist(Y1),unlist(Y2))
+  
+  
+  
+  
+  
+  
+  
   
   
   
@@ -1233,11 +1345,23 @@ RESULTS <- function(hypers,DATA,EMresults,tm.all){
   RESULTS$basics = result
   RESULTS$pred_mu1 = pred_mu1
   RESULTS$pred_mu2 = pred_mu2
-  RESULTS$w_1 = w_1_r
-  
+  RESULTS$w_1 = w_1
+  RESULTS$ids = ids
+  RESULTS$p1 = EMresults$p1
+  RESULTS$GL = EMresults$GL
+  RESULTS$ZmatL = EMresults$ZmatL
+  RESULTS$yalld = EMresults$yalld
+  RESULTS$randomEffects = randomEffects
+  RESULTS$resid_all = resid_all
   
   saveRDS(RESULTS,"results.rds")
-  return(RESULTS)
+  
+  RESULTS1 = RESULTS
+  RESULTS1$GL = NULL
+  RESULTS1$ZmatL = NULL
+  RESULTS1$yalld = NULL
+  
+  return(RESULTS1)
 }
 
 

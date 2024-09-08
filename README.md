@@ -1,7 +1,7 @@
 # NMEM
 The code used for the paper "A Nonparametric Mixed-Effects Mixture Model for Patterns of Clinical Measurements Associated with COVID-19"
 
-https://arxiv.org/abs/2305.04140
+https://projecteuclid.org/journals/annals-of-applied-statistics/volume-18/issue-3/A-nonparametric-mixed-effects-mixture-model-for-patterns-of-clinical/10.1214/23-AOAS1871.full
 
 "A_main_simulation.R" is the main code for the independent random error case. The results of NMEM in table 3, figure 3 and figure 4 are from here. Please contact Lu and Song to get the code used for Lu and Song's method in table 3, figure 3 and 4. This code contains the estimate of random effects.
 
